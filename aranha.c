@@ -506,7 +506,6 @@ void DesenharBombas() {
         }
     }
 }
-
 // Desenha a teia do Homem-Aranha no buffer.
 void DesenharTeia() {
     // Verifica se o jogador está no processo de disparar a teia.
@@ -1334,6 +1333,34 @@ DWORD WINAPI Jogo(){
     return 0;
 }
 
+bool fim_efeito = false;
+void SomDisparoTeia(){
+    if (GetAsyncKeyState(VK_SPACE) & 0x8000 && !quedaFatal){
+        if (GetAsyncKeyState(VK_UP) & 0x8000 || GetAsyncKeyState(VK_LEFT) & 0x8000 || GetAsyncKeyState(VK_RIGHT) & 0x8000){
+            if(comprimentoTeiaVoo < 5){
+                Beep(349, 150); // Fá (F4)
+                Sleep(50);
+            }
+            else if(comprimentoTeiaVoo == 5 && !fim_efeito){
+                Beep(349, 150); // Fá (F4)
+                Sleep(50);
+                fim_efeito = true;
+            }
+        }
+    }   
+        
+    if(comprimentoTeiaVoo == 0){
+        fim_efeito = false;
+    }
+}
+
+DWORD WINAPI EfeitosSonoros(){
+    while(true){
+        SomDisparoTeia();
+    }
+    return 0;
+}
+
 DWORD WINAPI Musica(){
     int frequencia_parte1[] = {330, 370, 392, 392, 370, 330, 0, 330, 370, 392, 330, 370, 392};
     int duracao_parte1[] = {150, 150, 300, 150, 150, 300, 100, 150, 150, 150, 150, 150, 300};
@@ -1341,34 +1368,38 @@ DWORD WINAPI Musica(){
     int frequencia_parte2[] = {523, 523, 493, 440, 440, 392};
     int duracao_parte2[] = {300, 150, 150, 300, 150, 450};
 
-    while(1){
+    while(true){
         for(int i = 0; i < 13; i++){
             Beep(frequencia_parte1[i], duracao_parte1[i]);
             Sleep(50);
         }
+
+        Sleep(50);
 
         for(int i = 0; i < 6; i++){
             Beep(frequencia_parte2[i], duracao_parte2[i]);
             Sleep(50);
         }
     }
-
     return 0;
 }
 
 // =================================================================================
 // FUNÇÃO PRINCIPAL (main)
 // O ponto de entrada do programa e o loop principal do jogo.
-// =================================================================================
+// ================================================================================= 
 int main(){
     HANDLE thread1;
     HANDLE thread2;
+    //HANDLE thread3;
 
     thread1 = CreateThread(NULL, 0, Jogo, NULL, 0, NULL);
-    thread2 = CreateThread(NULL, 0, Musica, NULL, 0, NULL);
+    thread2 = CreateThread(NULL, 0, EfeitosSonoros, NULL, 0, NULL);
+    //thread3 = CreateThread(NULL, 0, Musica, NULL, 0, NULL);
 
     WaitForSingleObject(thread1, INFINITE);
     WaitForSingleObject(thread2, INFINITE);
+    //WaitForSingleObject(thread3, INFINITE);
+
     return 0; // Fim do programa (teoricamente nunca alcançado devido ao loop infinito).
 }
-
