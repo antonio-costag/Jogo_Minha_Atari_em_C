@@ -168,6 +168,10 @@ int acumuladorTempo;            // Acumula o tempo dos tiques do jogo para decre
 int pontuacao;                  // Pontuação atual do jogador. 
 int vidas;                      // Vidas restantes do jogador.
 
+bool som_toco_inimigo = false;
+bool som_toco_bomba = false;
+bool som_toco_doente = false;
+
 // --- Sprites dos Personagens ---
 const wchar_t *CORPO_MIRANHA[ALTURA_MIRANHA] = {
     L"|o /",
@@ -499,8 +503,14 @@ void DesenharInimigos() {
                             int indice = finalY * LARGURA_TELA + finalX;
                             // Copia o caractere do sprite para o buffer.
                             bufferConsole[indice].Char.UnicodeChar = INIMIGO_JANELA_SPRITE[linha][coluna];
-                            // Define a cor (vermelho intenso).
-                            bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_INTENSITY;
+
+                            if(INIMIGO_JANELA_SPRITE[linha][coluna] == 'o'){
+                                bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_BLUE;
+                            }
+                            else{
+                                // Define a cor (vermelho intenso).
+                                bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_INTENSITY;
+                            }
                         }
                     }
                 }
@@ -1205,6 +1215,7 @@ void VerificarColisoes() {
             int inimigo_x1 = inimigoTelaX, inimigo_y1 = inimigoTelaY, inimigo_x2 = inimigoTelaX + LARGURA_INIMIGO_JANELA, inimigo_y2 = inimigoTelaY + ALTURA_INIMIGO_JANELA;
             if (miranha_x1 < inimigo_x2 && miranha_x2 > inimigo_x1 && miranha_y1 < inimigo_y2 && miranha_y2 > inimigo_y1) {
                 pontuacao += 30; // Ganha pontos.
+                som_toco_inimigo = true;
                 inimigos[i].ativo = false;
                 return; // Inimigo derrotado.
             }
@@ -1218,6 +1229,7 @@ void VerificarColisoes() {
             int bombaTelaX = bombas[i].x + ((LARGURA_TELA - LARGURA_PREDIO) / 2);
             if(miranha_x1 < bombaTelaX + 1 && miranha_x2 > bombaTelaX && miranha_y1 < bombaTelaY + 1 && miranha_y2 > bombaTelaY) {
                 pontuacao += 80; // Ganha pontos.
+                som_toco_bomba = true;
                 bombas[i].ativo = false;
                 return; // Bomba desarmada.
             }
@@ -1237,6 +1249,7 @@ void VerificarColisoes() {
             // Verifica se algum ponto da teia toca o Duende.
             if (yPredioTela <= 4) {
                 if (x0 >= doente_x1 && x0 < doente_x2 && y0 >= doente_y1 && y0 < doente_y2) {
+                    som_toco_doente = true;
                     miranha_cair = true;
                     return;
 
@@ -1380,7 +1393,7 @@ void SomDisparoTeia(){
 }
 
 void SomTeiaAncorada(){
-    if(teiaAncorada == true){
+    if(teiaAncorada){
         if(GetAsyncKeyState(VK_UP) & 0x8000 || GetAsyncKeyState(VK_DOWN) & 0x8000){
             if(tamanhoAtualTeia < 5){
                 Beep(261, 150);
@@ -1390,10 +1403,36 @@ void SomTeiaAncorada(){
     }
 }
 
+void SomQuedaMiranha(){
+    if(miranha_cair || quedaFatal){ 
+        Beep(392, 150); // Sol (G4)
+        Sleep(50);
+        Beep(261, 150); // Dó (C4)
+        Sleep(50);
+        Beep(329, 150); // Mi (E4)
+        Sleep(50);
+    }
+}
+
+void SomColodirElementos(bool colisao, int frequncia){
+    if(colisao == true){
+        Beep(frequncia, 150); // La (A4)
+        Sleep(50);
+
+        som_toco_inimigo = false;
+        som_toco_bomba = false;
+        som_toco_doente = false;
+    }
+}
+
 DWORD WINAPI EfeitosSonoros(){
     while(true){
         SomDisparoTeia();
         SomTeiaAncorada();
+        SomQuedaMiranha();
+        SomColodirElementos(som_toco_inimigo, 392);
+        SomColodirElementos(som_toco_bomba, 440);
+        SomColodirElementos(som_toco_doente, 493);
     }
     return 0;
 }
