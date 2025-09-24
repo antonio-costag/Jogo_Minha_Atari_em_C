@@ -270,7 +270,7 @@ void InicializarMiranha(){
     miranha.x = 38; // Posição X inicial.
     miranha.y = 7;  // Posição Y inicial.
 
-    miranha.cor = FOREGROUND_BLUE | FOREGROUND_INTENSITY; // Define a cor do personagem.
+    //miranha.cor = FOREGROUND_BLUE | FOREGROUND_INTENSITY; // Define a cor do personagem.
 
     miranha_cair = false;      // Garante que ele não comece caindo.
     quedaFatal = false;        // Garante que ele não comece em queda fatal.
@@ -296,7 +296,7 @@ void InicializarDoente(){
     doente.x = 38; // Posição X inicial.
     doente.y = 0;  // Posição Y inicial.
 
-    doente.cor = FOREGROUND_GREEN | FOREGROUND_INTENSITY; // Define a cor.
+    //doente.cor = FOREGROUND_GREEN | FOREGROUND_INTENSITY; // Define a cor.
 
     doente.direita = true;  // Começa se movendo para a direita.
     doente.esquerda = false; // Não está se movendo para a esquerda.
@@ -378,8 +378,13 @@ void DesenharPredio(){
             if (i >= 0 && i < ALTURA_PREDIO) {
                 // Copia o caractere do prédio para o buffer do console.
                 bufferConsole[indice].Char.UnicodeChar = PREDIO[i][j];
-                // Define os atributos de cor para o caractere do prédio.
-                bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY; // Cor amarela/dourada
+                if(PREDIO[i][j] == '#'){
+                    bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_INTENSITY; // Cor amarela/dourada
+                }
+                else{
+                    // Define os atributos de cor para o caractere do prédio.
+                    bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY; // Cor amarela/dourada
+                }
             }
         }
     }
@@ -402,8 +407,13 @@ void DesenharMiranha(){
                     if ( (miranha.y + i) < ALTURA_JOGO) {
                         // Copia o caractere do sprite para o buffer.
                         bufferConsole[indice].Char.UnicodeChar = CORPO_MIRANHA[i][j];
-                        // Define a cor.
-                        bufferConsole[indice].Attributes = miranha.cor;
+
+                        if(CORPO_MIRANHA[i][j] == 'o'){
+                            bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_INTENSITY;
+                        }
+                        else{
+                            bufferConsole[indice].Attributes = FOREGROUND_BLUE | FOREGROUND_INTENSITY;
+                        }
                     }
                 }
             }
@@ -419,8 +429,13 @@ void DesenharMiranha(){
              if (miranha.y < ALTURA_JOGO) {
                 // Copia o caractere do sprite de queda para o buffer.
                 bufferConsole[indice + i].Char.UnicodeChar = MIRANHA_CAINDO[i];
-                // Define a cor.
-                bufferConsole[indice + i].Attributes = miranha.cor;
+                
+                if(MIRANHA_CAINDO[i] == 'o' || MIRANHA_CAINDO[i] == '_'){
+                    bufferConsole[indice + i].Attributes = FOREGROUND_RED | FOREGROUND_INTENSITY;
+                }
+                else{
+                    bufferConsole[indice + i].Attributes = FOREGROUND_BLUE | FOREGROUND_INTENSITY;
+                }
              }
         }
     }
@@ -440,8 +455,18 @@ void DesenharDoente(){
                 if ( (doente.y + (i- yDoenteTela)) < ALTURA_JOGO){
                     // Copia o caractere do sprite para o buffer.
                     bufferConsole[indice].Char.UnicodeChar = DOENTE_VERDE[i][j];
+
+                    if(i == 0){
+                        bufferConsole[indice].Attributes = FOREGROUND_GREEN | FOREGROUND_INTENSITY;
+                    }
+                    else if(i == 1){
+
+                        bufferConsole[indice].Attributes = FOREGROUND_BLUE | FOREGROUND_RED | FOREGROUND_INTENSITY;
+                    }
+                    else{
+                        bufferConsole[indice].Attributes = FOREGROUND_BLUE;
+                    }
                     // Define a cor.
-                    bufferConsole[indice].Attributes = doente.cor;
                 }
             }
         }
@@ -1339,11 +1364,11 @@ void SomDisparoTeia(){
         if (GetAsyncKeyState(VK_UP) & 0x8000 || GetAsyncKeyState(VK_LEFT) & 0x8000 || GetAsyncKeyState(VK_RIGHT) & 0x8000){
             if(comprimentoTeiaVoo < 5){
                 Beep(349, 150); // Fá (F4)
-                Sleep(50);
+                Sleep(100);
             }
             else if(comprimentoTeiaVoo == 5 && !fim_efeito){
                 Beep(349, 150); // Fá (F4)
-                Sleep(50);
+                Sleep(100);
                 fim_efeito = true;
             }
         }
@@ -1354,9 +1379,21 @@ void SomDisparoTeia(){
     }
 }
 
+void SomTeiaAncorada(){
+    if(teiaAncorada == true){
+        if(GetAsyncKeyState(VK_UP) & 0x8000 || GetAsyncKeyState(VK_DOWN) & 0x8000){
+            if(tamanhoAtualTeia < 5){
+                Beep(261, 150);
+                Sleep(100);
+            } 
+        }
+    }
+}
+
 DWORD WINAPI EfeitosSonoros(){
     while(true){
         SomDisparoTeia();
+        SomTeiaAncorada();
     }
     return 0;
 }
