@@ -1327,7 +1327,7 @@ void AtualizarTempo() {
         quedaFatal = true;   // Marca a queda como fatal (não pode ser salva com a teia).
     }
 }
-DWORD WINAPI Jogo(){
+DWORD WINAPI Jogo(LPVOID lpParam){ // Precisa desse LPVOID lpParam pra compilar pra mim
     // Inicializa o gerador de números aleatórios com a hora atual, para que os spawns sejam diferentes a cada jogo.
     srand(time(NULL));
     // Configura o console para exibir corretamente caracteres UTF-8 (como os usados no prédio).
@@ -1426,7 +1426,7 @@ void SomColodirElementos(bool colisao, int frequncia){
 }                                              
                                  
 bool musica = false;
-DWORD WINAPI EfeitosSonoros(){
+DWORD WINAPI EfeitosSonoros(LPVOID lpParam){ // Precisa desse LPVOID lpParam pra compilar pra mim
     while(true){
         if(!musica){
             SomDisparoTeia();
@@ -1440,7 +1440,7 @@ DWORD WINAPI EfeitosSonoros(){
     return 0;
 }
 
-DWORD WINAPI Musica(){
+DWORD WINAPI Musica(LPVOID lpParam){ // Precisa desse LPVOID lpParam pra compilar pra mim
     musica = true;
     // Toca a primeira frase: "Spi-der-Man,"
     Beep(294, 225); // Nota D4
