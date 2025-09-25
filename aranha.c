@@ -1441,25 +1441,29 @@ DWORD WINAPI EfeitosSonoros(){
 }
 
 DWORD WINAPI Musica(){
-    int frequencia_parte1[] = {330, 370, 392, 392, 370, 330, 0, 330, 370, 392, 330, 370, 392};
-    int duracao_parte1[] = {150, 150, 300, 150, 150, 300, 100, 150, 150, 150, 150, 150, 300};
-
-    int frequencia_parte2[] = {523, 523, 493, 440, 440, 392};
-    int duracao_parte2[] = {300, 150, 150, 300, 150, 450};
-
     musica = true;
+    // Toca a primeira frase: "Spi-der-Man,"
+    Beep(294, 225); // Nota D4
+    Beep(294, 75);  // Nota D4
+    Beep(440, 300); // Nota A4
+    Sleep(150);     // Pausa
 
-    for(int i = 0; i < 13; i++){
-        Beep(frequencia_parte1[i], duracao_parte1[i]);
-        Sleep(50);
-    }
+    // Toca a segunda frase: "Spi-der-Man,"
+    Beep(294, 225); // Nota D4
+    Beep(294, 75);  // Nota D4
+    Beep(440, 300); // Nota A4
+    Sleep(150);     // Pausa
 
-    Sleep(50);
-
-    for(int i = 0; i < 6; i++){
-        Beep(frequencia_parte2[i], duracao_parte2[i]);
-        Sleep(50);
-    }
+    // Toca a terceira frase: "does whatever a spider can"
+    Beep(440, 150); // Nota A4
+    Beep(392, 150); // Nota G4
+    Beep(349, 150); // Nota F4
+    Beep(330, 150); // Nota E4
+    Beep(294, 150); // Nota D4
+    Beep(330, 150); // Nota E4
+    Beep(349, 150); // Nota F4
+    Beep(294, 300); // Nota D4
+    Sleep(150);
 
     musica = false;
     return 0;
