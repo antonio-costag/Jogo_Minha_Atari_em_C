@@ -172,9 +172,11 @@ int contadorTempo;            // Acumula o tempo dos tiques do jogo para decreme
 int pontuacao;                  // Pontuação atual do jogador. 
 int vidas;                      // Vidas restantes do jogador.
 
+bool fim_som_disparo = false;
 bool som_colidir_inimigo = false;
 bool som_colidir_bomba = false;
 bool som_colidir_doente = false;
+bool musica = false;
 
 // --- Sprites dos Personagens ---
 const wchar_t *CORPO_MIRANHA[ALTURA_MIRANHA] = {
@@ -330,7 +332,7 @@ void InicializarBombas() {
     }
 }
 
-// Agrupa todas as inicializações de um nível.
+// Agrupa todas as inicializações de um nível. 
 void InicializarNivel() {
     InicializarMiranha(); // Prepara o Homem-Aranha.
     InicializarDoente();  // Prepara o Duende Verde.
@@ -362,6 +364,9 @@ void PerderVida() {
 
 // Função chamada quando o jogador vence o nível.
 void VencerNivel() {
+    //pauda pra tocar a musica
+    Sleep(3000);
+    
     pontuacao *= 2;     // Dobra a pontuação como bônus.
     InicializarNivel(); // Prepara e inicia o próximo nível (que é o mesmo, mas com pontuação maior).
 }
@@ -1314,8 +1319,12 @@ void VerificarColisoes() {
                 int predioY = miranhaTelaY + scrollCamera, predioX = miranhaTelaX - ((LARGURA_TELA - LARGURA_PREDIO) / 2);
                 if (predioY >= 0 && predioY < ALTURA_PREDIO && predioX >= 0 && predioX < LARGURA_PREDIO) {
                     // O caractere '#' marca o objetivo.
-                    if (PREDIO[predioY][predioX] == '#') {
-                        VencerNivel(); // Venceu!
+                    if (PREDIO[predioY][predioX] == '#') { 
+                        //toca a musica
+                        musica = true;
+
+                        //vence
+                        VencerNivel();
                         return;
                     }
                 }
@@ -1382,7 +1391,6 @@ DWORD WINAPI Jogo(LPVOID lpParam){ // Precisa desse LPVOID lpParam pra compilar 
     return 0;
 }
 
-bool fim_efeito = false;
 void SomDisparoTeia(){
     if (GetAsyncKeyState(VK_SPACE) & 0x8000 && !quedaFatal){
         if (GetAsyncKeyState(VK_UP) & 0x8000 || GetAsyncKeyState(VK_LEFT) & 0x8000 || GetAsyncKeyState(VK_RIGHT) & 0x8000){
@@ -1390,16 +1398,16 @@ void SomDisparoTeia(){
                 Beep(349, 150); // Fá (F4)
                 Sleep(100);
             }
-            else if(tamanhoTeiaDisparando == 5 && !fim_efeito){
+            else if(tamanhoTeiaDisparando == 5 && !fim_som_disparo){
                 Beep(349, 150); // Fá (F4)
                 Sleep(100);
-                fim_efeito = true;
+                fim_som_disparo = true;
             }
         }
     }   
         
     if(tamanhoTeiaDisparando == 0){
-        fim_efeito = false;
+        fim_som_disparo = false;
     }
 }
 
@@ -1434,26 +1442,8 @@ void SomColodirElementos(bool colisao, int frequncia){
         som_colidir_bomba = false;
         som_colidir_doente = false;
     }
-}                                              
-                                 
-bool musica = false;
-DWORD WINAPI EfeitosSonoros(LPVOID lpParam){ // Precisa desse LPVOID lpParam pra compilar pra mim
-    while(true){
-        if(!musica){
-            SomDisparoTeia();
-            SomTeiaAncorada();
-            SomQuedaMiranha();
-            SomColodirElementos(som_colidir_inimigo, 392);
-            SomColodirElementos(som_colidir_bomba, 440);
-            SomColodirElementos(som_colidir_doente, 493);
-        }
-    }
-    return 0;
-}
-
-DWORD WINAPI Musica(LPVOID lpParam){ // Precisa desse LPVOID lpParam pra compilar pra mim
-    musica = true;
-    // Toca a primeira frase: "Spi-der-Man,"
+}      
+void Musica(){
     Beep(294, 225); // Nota D4
     Beep(294, 75);  // Nota D4
     Beep(440, 300); // Nota A4
@@ -1477,6 +1467,26 @@ DWORD WINAPI Musica(LPVOID lpParam){ // Precisa desse LPVOID lpParam pra compila
     Sleep(150);
 
     musica = false;
+}                                        
+                                 
+DWORD WINAPI EfeitosSonoros(LPVOID lpParam){ // Precisa desse LPVOID lpParam pra compilar pra mim
+    //incia tocando a musica;
+    musica = true;
+
+    //a musica tem priodade no jogo.
+    while(true){
+        if(musica){
+            Musica();
+        }
+        else{
+            SomDisparoTeia();
+            SomTeiaAncorada();
+            SomQuedaMiranha();
+            SomColodirElementos(som_colidir_inimigo, 392);
+            SomColodirElementos(som_colidir_bomba, 440);
+            SomColodirElementos(som_colidir_doente, 493);
+        }
+    }
     return 0;
 }
 
@@ -1487,15 +1497,12 @@ DWORD WINAPI Musica(LPVOID lpParam){ // Precisa desse LPVOID lpParam pra compila
 int main(){
     HANDLE thread1;
     HANDLE thread2;
-    HANDLE thread3;
 
     thread1 = CreateThread(NULL, 0, Jogo, NULL, 0, NULL);
     thread2 = CreateThread(NULL, 0, EfeitosSonoros, NULL, 0, NULL);
-    thread3 = CreateThread(NULL, 0, Musica, NULL, 0, NULL);
 
     WaitForSingleObject(thread1, INFINITE);
     WaitForSingleObject(thread2, INFINITE);
-    WaitForSingleObject(thread3, INFINITE);
 
     return 0; // Fim do programa (teoricamente nunca alcançado devido ao loop infinito).
 }
