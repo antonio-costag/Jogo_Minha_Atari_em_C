@@ -1411,7 +1411,7 @@ void SomQuedaMiranha(){
         Sleep(50);
         Beep(329, 150); // Mi (E4)
         Sleep(50);
-    }
+    } 
 }
 
 void SomColodirElementos(bool colisao, int frequncia){
@@ -1423,16 +1423,19 @@ void SomColodirElementos(bool colisao, int frequncia){
         som_toco_bomba = false;
         som_toco_doente = false;
     }
-}
-
+}                                              
+                                 
+bool musica = false;
 DWORD WINAPI EfeitosSonoros(){
     while(true){
-        SomDisparoTeia();
-        SomTeiaAncorada();
-        SomQuedaMiranha();
-        SomColodirElementos(som_toco_inimigo, 392);
-        SomColodirElementos(som_toco_bomba, 440);
-        SomColodirElementos(som_toco_doente, 493);
+        if(!musica){
+            SomDisparoTeia();
+            SomTeiaAncorada();
+            SomQuedaMiranha();
+            SomColodirElementos(som_toco_inimigo, 392);
+            SomColodirElementos(som_toco_bomba, 440);
+            SomColodirElementos(som_toco_doente, 493);
+        }
     }
     return 0;
 }
@@ -1444,19 +1447,21 @@ DWORD WINAPI Musica(){
     int frequencia_parte2[] = {523, 523, 493, 440, 440, 392};
     int duracao_parte2[] = {300, 150, 150, 300, 150, 450};
 
-    while(true){
-        for(int i = 0; i < 13; i++){
-            Beep(frequencia_parte1[i], duracao_parte1[i]);
-            Sleep(50);
-        }
+    musica = true;
 
+    for(int i = 0; i < 13; i++){
+        Beep(frequencia_parte1[i], duracao_parte1[i]);
         Sleep(50);
-
-        for(int i = 0; i < 6; i++){
-            Beep(frequencia_parte2[i], duracao_parte2[i]);
-            Sleep(50);
-        }
     }
+
+    Sleep(50);
+
+    for(int i = 0; i < 6; i++){
+        Beep(frequencia_parte2[i], duracao_parte2[i]);
+        Sleep(50);
+    }
+
+    musica = false;
     return 0;
 }
 
@@ -1467,15 +1472,15 @@ DWORD WINAPI Musica(){
 int main(){
     HANDLE thread1;
     HANDLE thread2;
-    //HANDLE thread3;
+    HANDLE thread3;
 
     thread1 = CreateThread(NULL, 0, Jogo, NULL, 0, NULL);
     thread2 = CreateThread(NULL, 0, EfeitosSonoros, NULL, 0, NULL);
-    //thread3 = CreateThread(NULL, 0, Musica, NULL, 0, NULL);
+    thread3 = CreateThread(NULL, 0, Musica, NULL, 0, NULL);
 
     WaitForSingleObject(thread1, INFINITE);
     WaitForSingleObject(thread2, INFINITE);
-    //WaitForSingleObject(thread3, INFINITE);
+    WaitForSingleObject(thread3, INFINITE);
 
     return 0; // Fim do programa (teoricamente nunca alcançado devido ao loop infinito).
 }
