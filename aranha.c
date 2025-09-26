@@ -22,8 +22,8 @@
 #define INICIO_TEIA_X 2 // Posição X relativa do ponto de onde a teia é disparada no sprite do Homem-Aranha.
 #define MIRANHA_CENTRALIZADO_Y 7 // Posição Y onde o miranha fica centralizado na tela (enquanto não chegar no topo ou no chão Y sempre vai ser 7)
 
-#define MAX_INIMIGOS_JANELA 4   // Número máximo de inimigos de janela que podem aparecer ao mesmo tempo.
-#define MAX_BOMBAS 4            // Número máximo de bombas que podem estar ativas no cenário ao mesmo tempo.
+#define MAX_INIMIGOS_JANELA 24   // Número máximo de inimigos de janela que podem aparecer ao mesmo tempo.
+#define MAX_BOMBAS 14            // Número máximo de bombas que podem estar ativas no cenário ao mesmo tempo.
 
 #define MIRANHA_CAINDO "|_/o"   // Sprite especial para quando o Homem-Aranha está caindo.
 
@@ -127,6 +127,11 @@ int contadorTempo;            // Acumula o tempo dos tiques do jogo para decreme
 int pontuacao;                  // Pontuação atual do jogador. 
 int vidas;                      // Vidas restantes do jogador.
 
+int maxInimigoAtual = 4;
+int maxBombaAtual = 4;
+int probabilidadeInimigo = 5;
+int probabilidadeBomba = 2;
+
 bool fim_som_disparo = false;
 bool som_colidir_inimigo = false;
 bool som_colidir_bomba = false;
@@ -229,7 +234,7 @@ void InicializarDoente(){
 
 void InicializarInimigos() {
     // Loop por todos os slots de inimigos.
-    for (int i = 0; i < MAX_INIMIGOS_JANELA; i++) {
+    for (int i = 0; i < maxInimigoAtual; i++) {
         inimigos[i].ativo = false;      // Define cada inimigo como inativo.
         inimigos[i].tempoNoLugar = 0;   // Reseta seu temporizador.
     }
@@ -237,7 +242,7 @@ void InicializarInimigos() {
 
 void InicializarBombas() {
     // Loop por todos os slots de bombas.
-    for (int i = 0; i < MAX_BOMBAS; i++) {
+    for (int i = 0; i < maxBombaAtual; i++) {
         bombas[i].ativo = false;        // Define cada bomba como inativa.
         bombas[i].tempoNoLugar = 0;     // Reseta seu temporizador.
     }
@@ -256,9 +261,47 @@ void InicializarJogo() {
     InicializarNivel(); // Chama a função para configurar o primeiro nível.
 }
 
+void LimparBuffer(){
+    for(int i = 0; i < ALTURA_TELA * LARGURA_TELA; i++){
+        bufferConsole[i].Char.UnicodeChar = ESPACO_VAZIO;
+        bufferConsole[i].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
+    }
+}
+
+void DesenharBuffer(){
+    WriteConsoleOutputW(console, bufferConsole, tamanhoBuffer, posicaoCaractere, &areaEscritaConsole);
+}
+
+void GameOver(){
+    char gameOver[10];
+    char pontosTotais[50];
+    sprintf(gameOver, "GAME OVER");
+    sprintf(pontosTotais, "SUA PONTUACAO FINAL FOI: %d", pontuacao);
+
+    int indiceGameOver = (ALTURA_TELA/2)*LARGURA_TELA + (LARGURA_TELA - strlen(gameOver))/2;
+    int indicePontosTotais = (ALTURA_TELA/2 + 1)*LARGURA_TELA + (LARGURA_TELA - strlen(pontosTotais))/2;
+
+    LimparBuffer();
+
+    for(int i = 0; i < strlen(gameOver); i++){
+        bufferConsole[indiceGameOver + i].Char.UnicodeChar = gameOver[i];
+        bufferConsole[indiceGameOver + i].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY;
+    }
+
+    for(int i = 0; i < strlen(pontosTotais); i++){
+        bufferConsole[indicePontosTotais + i].Char.UnicodeChar = pontosTotais[i];
+        bufferConsole[indicePontosTotais + i].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY;
+    }
+
+    DesenharBuffer();
+
+    Sleep(5000);
+}
+
 void PerderVida() {
     vidas--; // Decrementa o contador de vidas.
     if (vidas <= 0) { // Se as vidas acabaram...
+        GameOver();
         pontuacao = 0; // Reseta a pontuação.
         vidas = 3;     // Reseta as vidas para o valor inicial.
     }
@@ -270,13 +313,29 @@ void VencerNivel() {
     Sleep(3000);
     
     pontuacao *= 2;     // Dobra a pontuação como bônus.
+
+    if(maxInimigoAtual + 2 <= MAX_INIMIGOS_JANELA){
+        maxInimigoAtual = maxInimigoAtual + 2;
+    }
+
+    if(maxBombaAtual + 2 <= MAX_BOMBAS){
+        maxBombaAtual = maxBombaAtual + 2;
+    }
+
+    if(probabilidadeInimigo < 100){
+        probabilidadeInimigo = probabilidadeInimigo + 5;
+    }
+
+    if(probabilidadeBomba < 100){
+        probabilidadeBomba = probabilidadeBomba + 2;
+    }
+
     InicializarNivel(); // Prepara e inicia o próximo nível (que é o mesmo, mas com pontuação maior).
 }
 
 bool mostrarMenu = true;
 int selecionado = 1;
 void MudarSelecionado(){
-    
     if(selecionado == 1){
         selecionado = 2;
     } else{
@@ -286,43 +345,33 @@ void MudarSelecionado(){
 }
 
 void MenuComoJogar(){
-    
     char textoComoJogar[61];
     char texto2[73];
     sprintf(textoComoJogar, "Segure Espaco + Direcao das Setinhas para disparar sua teia!");
     sprintf(texto2, "Quanto mais tempo voce segurar a barra de espaco, mais longe a teia vai!");
 
-    int startTextoX = (LARGURA_TELA - strlen(textoComoJogar))/2;
-    int startTextoY = ALTURA_TELA/2 * LARGURA_TELA;
+    int indiceComoJogar = ALTURA_TELA/2 * LARGURA_TELA + (LARGURA_TELA - strlen(textoComoJogar))/2;
+    int indiceTexto2 = (ALTURA_TELA/2 + 1) * LARGURA_TELA + (LARGURA_TELA - strlen(texto2))/2;
 
-    int startTexto2X = (LARGURA_TELA - strlen(texto2))/2;
-    int startTexto2Y = (ALTURA_TELA/2 + 1) * LARGURA_TELA;
-
-    for(int i = 0; i < LARGURA_TELA * ALTURA_TELA; ++i){
-        bufferConsole[i].Char.UnicodeChar = ESPACO_VAZIO;
-        bufferConsole[i].Attributes = FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED;
-    }
+    LimparBuffer();
 
     for(int i = 0; i < strlen(textoComoJogar); i++){
-        bufferConsole[startTextoY + startTextoX + i].Char.UnicodeChar = textoComoJogar[i];
-        bufferConsole[startTextoY + startTextoX + i].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY;
+        bufferConsole[indiceComoJogar + i].Char.UnicodeChar = textoComoJogar[i];
+        bufferConsole[indiceComoJogar + i].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY;
     }
 
     for(int i = 0; i < strlen(texto2); i++){
-        bufferConsole[startTexto2Y + startTexto2X + i].Char.UnicodeChar = texto2[i];
-        bufferConsole[startTexto2Y + startTexto2X + i].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY;
+        bufferConsole[indiceTexto2 + i].Char.UnicodeChar = texto2[i];
+        bufferConsole[indiceTexto2+ i].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY;
     }
 
-    WriteConsoleOutputW(console, bufferConsole, tamanhoBuffer, posicaoCaractere, &areaEscritaConsole);
+    DesenharBuffer();
 
     Sleep(5000);
 
-     for(int i = 0; i < LARGURA_TELA * ALTURA_TELA; ++i){
-        bufferConsole[i].Char.UnicodeChar = ESPACO_VAZIO;
-        bufferConsole[i].Attributes = FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED;
-    }
+    LimparBuffer();
 
-    WriteConsoleOutputW(console, bufferConsole, tamanhoBuffer, posicaoCaractere, &areaEscritaConsole);
+    DesenharBuffer();
 }
 
 void SelecionarMenu(){
@@ -338,28 +387,29 @@ void MenuInicial(){
     
     char jogar[6];
     sprintf(jogar, "JOGAR");
-    int startJogoX = (LARGURA_TELA - strlen(jogar)) / 2;
-    int startJogoY = ALTURA_TELA/2 * LARGURA_TELA;
+
+    int indiceJogar = ALTURA_TELA/2 * LARGURA_TELA + (LARGURA_TELA - strlen(jogar)) / 2;
 
     for (int i = 0; i < strlen(jogar); i++) {
-        bufferConsole[startJogoY + startJogoX + i].Char.UnicodeChar = jogar[i];
+        bufferConsole[indiceJogar + i].Char.UnicodeChar = jogar[i];
         if(selecionado == 1){
-            bufferConsole[startJogoY + startJogoX + i].Attributes = BACKGROUND_BLUE | FOREGROUND_RED | FOREGROUND_GREEN| FOREGROUND_BLUE | FOREGROUND_INTENSITY;
+            bufferConsole[indiceJogar + i].Attributes = BACKGROUND_BLUE | FOREGROUND_RED | FOREGROUND_GREEN| FOREGROUND_BLUE | FOREGROUND_INTENSITY;
         } else {
-            bufferConsole[startJogoY + startJogoX + i].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY;
+            bufferConsole[indiceJogar + i].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY;
         }
     }
 
     char comoJogar[11];
     sprintf(comoJogar, "COMO JOGAR");
-    int startComoX = (LARGURA_TELA - strlen(comoJogar)) / 2;
-    int startComoY = (ALTURA_TELA/2 + 1) * LARGURA_TELA;
+
+    int indiceComoJogar = (ALTURA_TELA/2 + 1) * LARGURA_TELA + (LARGURA_TELA - strlen(comoJogar)) / 2;
+
     for(int i = 0; i < strlen(comoJogar); i++){
-        bufferConsole[startComoY + startComoX + i].Char.UnicodeChar = comoJogar[i];
+        bufferConsole[indiceComoJogar + i].Char.UnicodeChar = comoJogar[i];
         if(selecionado == 2){
-            bufferConsole[startComoY  + startComoX + i].Attributes = BACKGROUND_BLUE | FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY;
+            bufferConsole[indiceComoJogar + i].Attributes = BACKGROUND_BLUE | FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY;
         } else {
-            bufferConsole[startComoY + startComoX + i].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY; 
+            bufferConsole[indiceComoJogar + i].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY; 
         }
     }
     
@@ -373,7 +423,7 @@ void MenuInicial(){
         SelecionarMenu();
     }
 
-    WriteConsoleOutputW(console, bufferConsole, tamanhoBuffer, posicaoCaractere, &areaEscritaConsole);
+    DesenharBuffer();
 }
 
 void DesenharPredio(){
@@ -383,10 +433,10 @@ void DesenharPredio(){
             if (i >= 0 && i < ALTURA_PREDIO) {
                 bufferConsole[indice].Char.UnicodeChar = PREDIO[i][j];
                 if(PREDIO[i][j] == '#'){
-                    bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_INTENSITY; // Cor amarela/dourada
+                    bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_INTENSITY;
                 }
                 else{
-                    bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY; // Cor amarela/dourada
+                    bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_INTENSITY;
                 }
             }
         }
@@ -446,7 +496,7 @@ void DesenharDoente(){
                         bufferConsole[indice].Attributes = FOREGROUND_BLUE | FOREGROUND_RED | FOREGROUND_INTENSITY;
                     }
                     else{
-                        bufferConsole[indice].Attributes = FOREGROUND_BLUE;
+                        bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
                     }
                 }
             }
@@ -455,7 +505,7 @@ void DesenharDoente(){
 }
 
 void DesenharInimigos() {
-    for (int i = 0; i < MAX_INIMIGOS_JANELA; i++) {
+    for (int i = 0; i < maxInimigoAtual; i++) {
         if (inimigos[i].ativo) {
             int inimigoTelaY = inimigos[i].y - scrollCamera;
             int inimigoTelaX = inimigos[i].x + ((LARGURA_TELA - LARGURA_PREDIO) / 2);
@@ -484,7 +534,7 @@ void DesenharInimigos() {
 }
 
 void DesenharBombas() {
-    for (int i = 0; i < MAX_BOMBAS; i++) {
+    for (int i = 0; i < maxBombaAtual; i++) {
         if (bombas[i].ativo) {
             int bombaTelaY = bombas[i].y - scrollCamera + ALTURA_UI_SUPERIOR;
             int bombaTelaX = bombas[i].x + ((LARGURA_TELA - LARGURA_PREDIO) / 2);
@@ -570,10 +620,10 @@ void DesenharTeia() {
 void DesenharUI() {
     char textoPontos[30]; // Cria uma string para formatar o texto.
     sprintf(textoPontos, "PONTOS: %d", pontuacao); // Formata a string com a pontuação atual.
-    int startX = (LARGURA_TELA - strlen(textoPontos)) / 2; // Calcula a posição inicial para centralizar o texto.
+    int indiceTextoPontos = (LARGURA_TELA - strlen(textoPontos)) / 2; // Calcula a posição inicial para centralizar o texto.
     // Loop para escrever o texto no buffer, na linha superior.
     for (int i = 0; i < strlen(textoPontos); i++) {
-        bufferConsole[i + startX].Char.UnicodeChar = textoPontos[i];
+        bufferConsole[i + indiceTextoPontos].Char.UnicodeChar = textoPontos[i];
     }
 
     int linhaInferiorY = ALTURA_JOGO_PRINCIPAL + ALTURA_UI_SUPERIOR; // Define a linha Y para a UI inferior.
@@ -587,17 +637,14 @@ void DesenharUI() {
 
     for (int i = 0; i < tempoRestante; i++) {
         int x = LARGURA_TELA - TEMPO_MAXIMO - 1 + i; // Calcula a posição X no canto inferior direito.
-        int indice = linhaInferiorY * LARGURA_TELA + x;
-        bufferConsole[indice].Char.UnicodeChar = '#'; // Caractere da barra de tempo.
-        bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY; // Cor da barra.
+        int indiceTextoVidas = linhaInferiorY * LARGURA_TELA + x;
+        bufferConsole[indiceTextoVidas].Char.UnicodeChar = '#'; // Caractere da barra de tempo.
+        bufferConsole[indiceTextoVidas].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY; // Cor da barra.
     }
 }
 
 void DesenharTela(){
-    for(int i = 0; i < LARGURA_TELA * ALTURA_TELA; ++i){
-        bufferConsole[i].Char.UnicodeChar = ESPACO_VAZIO;
-        bufferConsole[i].Attributes = FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED;
-    }
+    LimparBuffer();
     
     DesenharUI();       // UI fica no fundo para não sobrepor o jogo.
     DesenharPredio();   // O prédio é o fundo principal.
@@ -610,7 +657,7 @@ void DesenharTela(){
     DesenharDoente();   // O Duende Verde.
     DesenharMiranha();  // O Homem-Aranha é a camada mais à frente.
  
-    WriteConsoleOutputW(console, bufferConsole, tamanhoBuffer, posicaoCaractere, &areaEscritaConsole);
+    DesenharBuffer();
 }
 
 void ControlarTeia() {
@@ -674,7 +721,7 @@ void ControlarTeia2(){
         }
 
         if(teia_x_tela != -1) {
-            for (int j = 0; j < MAX_INIMIGOS_JANELA; j++) {
+            for (int j = 0; j < maxInimigoAtual; j++) {
                 if(inimigos[j].ativo) {
                     int inimigoTelaY = inimigos[j].y - scrollCamera, inimigoTelaX = inimigos[j].x + ((LARGURA_TELA - LARGURA_PREDIO) / 2);
                     if(teia_x_tela >= inimigoTelaX && teia_x_tela < inimigoTelaX + LARGURA_INIMIGO_JANELA && teia_y_tela >= inimigoTelaY && teia_y_tela < inimigoTelaY + ALTURA_INIMIGO_JANELA) {
@@ -685,7 +732,7 @@ void ControlarTeia2(){
                 }
             }
             if(colidiu) break; // Sai do loop se já colidiu.
-            for (int j = 0; j < MAX_BOMBAS; j++) {
+            for (int j = 0; j < maxBombaAtual; j++) {
                 if(bombas[j].ativo) {
                     int bombaTelaY = bombas[j].y - scrollCamera, bombaTelaX = bombas[j].x + ((LARGURA_TELA - LARGURA_PREDIO) / 2);
                     if(teia_x_tela == bombaTelaX && teia_y_tela == bombaTelaY) {
@@ -845,20 +892,20 @@ void MovimentarDoente(){
 }
 
 void SpawnInimigos() {
-    if (rand() % 100 > 2) {
+    if (rand() % 100 >= probabilidadeInimigo) {
         return;
     }
 
     int inimigosAtivos = 0;
-    for (int i = 0; i < MAX_INIMIGOS_JANELA; i++) {
+    for (int i = 0; i < maxInimigoAtual; i++) {
         if (inimigos[i].ativo) {
             inimigosAtivos++;
         }
     }
 
-    if (inimigosAtivos < MAX_INIMIGOS_JANELA) {
+    if (inimigosAtivos < maxInimigoAtual) {
         int slotVazio = -1;
-        for (int i = 0; i < MAX_INIMIGOS_JANELA; i++) {
+        for (int i = 0; i < maxInimigoAtual; i++) {
             if (!inimigos[i].ativo) {
                 slotVazio = i;
                 break;
@@ -873,7 +920,7 @@ void SpawnInimigos() {
                 bool naTela = posicoesJanelas[i].Y >= scrollCamera && posicoesJanelas[i].Y < scrollCamera + ALTURA_JOGO_PRINCIPAL;
                 if (naTela) {
                     bool posicaoOcupada = false;
-                    for (int j = 0; j < MAX_INIMIGOS_JANELA; j++) {
+                    for (int j = 0; j < maxInimigoAtual; j++) {
                         if (inimigos[j].ativo && inimigos[j].x == posicoesJanelas[i].X + 1 && inimigos[j].y == posicoesJanelas[i].Y + 2) {
                             posicaoOcupada = true;
                             break;
@@ -898,19 +945,19 @@ void SpawnInimigos() {
 }
 
 void SpawnBombas() {
-    if (rand() % 100 > 1) {
+    if (rand() % 100 >= probabilidadeBomba) {
         return;
     }
     int bombasAtivas = 0;
-    for(int i = 0; i < MAX_BOMBAS; i++) {
+    for(int i = 0; i < maxBombaAtual; i++) {
         if(bombas[i].ativo) {
             bombasAtivas++;
         }
     }
 
-    if(bombasAtivas < MAX_BOMBAS) {
+    if(bombasAtivas < maxBombaAtual) {
         int slotVazio = -1;
-        for(int i = 0; i < MAX_BOMBAS; i++) {
+        for(int i = 0; i < maxBombaAtual; i++) {
             if(!bombas[i].ativo) {
                 slotVazio = i;
                 break;
@@ -928,7 +975,7 @@ void SpawnBombas() {
                         bool naTela = y >= scrollCamera && y < scrollCamera + ALTURA_JOGO_PRINCIPAL;
                         if (naTela) {
                             bool ocupada = false; // Verifica se já tem outra bomba.
-                            for(int j = 0; j < MAX_BOMBAS; j++) {
+                            for(int j = 0; j < maxBombaAtual; j++) {
                                 if(bombas[j].ativo && bombas[j].x == x && bombas[j].y == y) {
                                     ocupada = true;
                                     break;
@@ -964,7 +1011,7 @@ void SpawnBombas() {
 }
 
 void AtualizarInimigos() {
-    for (int i = 0; i < MAX_INIMIGOS_JANELA; i++) {
+    for (int i = 0; i < maxInimigoAtual; i++) {
         if (inimigos[i].ativo) {
             inimigos[i].tempoNoLugar += ATRASO_TIQUE; // Incrementa o temporizador.
             if (inimigos[i].tempoNoLugar >= 4000) {
@@ -972,7 +1019,7 @@ void AtualizarInimigos() {
                 while (tentativas < NUM_POSICOES_JANELAS) {
                     int posIndex = rand() % NUM_POSICOES_JANELAS;
                     bool posicaoOcupada = false;
-                    for (int j = 0; j < MAX_INIMIGOS_JANELA; j++) {
+                    for (int j = 0; j < maxInimigoAtual; j++) {
                         if (i != j && inimigos[j].ativo && inimigos[j].x == posicoesJanelas[posIndex].X + 1 && inimigos[j].y == posicoesJanelas[posIndex].Y + 2) {
                             posicaoOcupada = true;
                             break;
@@ -992,7 +1039,7 @@ void AtualizarInimigos() {
 }
 
 void AtualizarBombas() {
-    for (int i = 0; i < MAX_BOMBAS; i++) {
+    for (int i = 0; i < maxBombaAtual; i++) {
         if (bombas[i].ativo) {
             bombas[i].tempoNoLugar += ATRASO_TIQUE; // Incrementa o temporizador.
             if (bombas[i].tempoNoLugar >= 4000) {
@@ -1070,7 +1117,7 @@ void VerificarColisoes() {
         return;
     }
 
-    for (int i = 0; i < MAX_INIMIGOS_JANELA; i++) {
+    for (int i = 0; i < maxInimigoAtual; i++) {
         if (inimigos[i].ativo) {
             int inimigoTelaY = inimigos[i].y - scrollCamera, inimigoTelaX = inimigos[i].x + ((LARGURA_TELA - LARGURA_PREDIO) / 2);
             int inimigo_x1 = inimigoTelaX, inimigo_y1 = inimigoTelaY, inimigo_x2 = inimigoTelaX + LARGURA_INIMIGO_JANELA, inimigo_y2 = inimigoTelaY + ALTURA_INIMIGO_JANELA;
@@ -1083,7 +1130,7 @@ void VerificarColisoes() {
         }
     }
 
-    for(int i = 0; i < MAX_BOMBAS; i++) {
+    for(int i = 0; i < maxBombaAtual; i++) {
         if(bombas[i].ativo) {
             int bombaTelaY = bombas[i].y - scrollCamera;
             int bombaTelaX = bombas[i].x + ((LARGURA_TELA - LARGURA_PREDIO) / 2);
@@ -1112,7 +1159,7 @@ void VerificarColisoes() {
 
                 }
             }
-            for (int j = 0; j < MAX_INIMIGOS_JANELA; j++) {
+            for (int j = 0; j < maxInimigoAtual; j++) {
                 if(inimigos[j].ativo) {
                     int inimigoTelaY = inimigos[j].y - scrollCamera, inimigoTelaX = inimigos[j].x + ((LARGURA_TELA - LARGURA_PREDIO) / 2);
                     if(x0 >= inimigoTelaX && x0 < inimigoTelaX + LARGURA_INIMIGO_JANELA && y0 >= inimigoTelaY && y0 < inimigoTelaY + ALTURA_INIMIGO_JANELA) {
@@ -1122,7 +1169,7 @@ void VerificarColisoes() {
                     }
                 }
             }
-            for (int j = 0; j < MAX_BOMBAS; j++) {
+            for (int j = 0; j < maxBombaAtual; j++) {
                 if(bombas[j].ativo) {
                     int bombaTelaY = bombas[j].y - scrollCamera, bombaTelaX = bombas[j].x + ((LARGURA_TELA - LARGURA_PREDIO) / 2);
                     if(x0 == bombaTelaX && y0 == bombaTelaY) {
