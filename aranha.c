@@ -8,7 +8,7 @@
 #define LARGURA_TELA 80         // Define a largura da janela do console em colunas de caracteres.
 #define ALTURA_TELA 17           // Define a altura total da janela do console em linhas de caracteres.
 #define ALTURA_JOGO_PRINCIPAL 15// Define a altura da área principal onde a jogabilidade acontece.
-#define ALTURA_UI_SUPERIOR 1    // Define a altura da linha usada para a Interface do Usuário (UI) superior, os pontos.
+#define ALTURA_HUD_SINGULAR 1    // Define a altura da linha usada para a Interface do Usuário (UI) superior, os pontos.
 #define ESPACO_VAZIO ' '        // Define o caractere usado para limpar a tela ou representar áreas vazias.
 #define ATRASO_TIQUE 100        // Define o atraso em milissegundos entre cada "tique" (quadro) do jogo. Controla a velocidade geral.
 
@@ -23,7 +23,7 @@
 #define MIRANHA_CENTRALIZADO_Y 7 // Posição Y onde o miranha fica centralizado na tela (enquanto não chegar no topo ou no chão Y sempre vai ser 7)
 
 #define MAX_INIMIGOS_JANELA 24   // Número máximo de inimigos de janela que podem aparecer ao mesmo tempo.
-#define MAX_BOMBAS 14            // Número máximo de bombas que podem estar ativas no cenário ao mesmo tempo.
+#define MAX_BOMBAS 16            // Número máximo de bombas que podem estar ativas no cenário ao mesmo tempo.
 
 #define MIRANHA_CAINDO "|_/o"   // Sprite especial para quando o Homem-Aranha está caindo.
 
@@ -31,6 +31,7 @@
 #define LARGURA_PREDIO 58       // Largura total do prédio em colunas de caracteres.
 
 #define TEMPO_MAXIMO 20         // Tempo inicial (em "barras") que o jogador tem para completar o nível.
+#define TEMPO_MINIMO 10
 #define DECREMENTO_TEMPO 2000   // Intervalo em milissegundos (2 segundos) para decrementar uma barra de tempo.
 
 const wchar_t *PREDIO[ALTURA_PREDIO] = {
@@ -122,8 +123,9 @@ bool quedaFatal = false;        // `true` se a queda é causada pelo fim do temp
 int scrollCamera = 0;            // Posição Y (vertical) da "câmera" no prédio. Controla o scroll.
 int scrollDoente = 0;            // Posição Y do Duende Verde, ajustada pelo scroll.
 
+int tempoMaximoAtual = TEMPO_MAXIMO;
 int tempoRestante;              // Contador para o tempo restante no nível.
-int contadorTempo;            // Acumula o tempo dos tiques do jogo para decrementar `tempoRestante`.
+int contadorTempo;              // Acumula o tempo dos tiques do jogo para decrementar `tempoRestante`.
 int pontuacao;                  // Pontuação atual do jogador. 
 int vidas;                      // Vidas restantes do jogador.
 
@@ -221,7 +223,7 @@ void InicializarMiranha(){
 
     tamanhoTeiaDisparando = 0;    // Reseta o comprimento da teia.
 
-    tempoRestante = TEMPO_MAXIMO; // Define o tempo inicial do nível.
+    tempoRestante = tempoMaximoAtual; // Define o tempo inicial do nível.
     contadorTempo = 0;       // Reseta o acumulador de tempo.
 }
 
@@ -303,24 +305,27 @@ void GameOver(){
 
     DesenharBuffer();
 
+    pontuacao = 0;
+    vidas = 3;
+    tempoMaximoAtual = TEMPO_MAXIMO;
+    predioCor = 1;
+
     Sleep(5000);
 }
 
 void PerderVida() {
-    vidas--; // Decrementa o contador de vidas.
-    if (vidas <= 0) { // Se as vidas acabaram...
+    vidas--;
+    if (vidas <= 0) {
         GameOver();
-        pontuacao = 0; // Reseta a pontuação.
-        vidas = 3;     // Reseta as vidas para o valor inicial.
     }
-    InicializarNivel(); // Reinicia o nível atual.
+    InicializarNivel();
 }
 
 void VencerNivel() {
-    //pauda pra tocar a musica
+    //pausa pra tocar a musica
     Sleep(3000);
     
-    pontuacao *= 2;     // Dobra a pontuação como bônus.
+    pontuacao *= 2;
 
     if(maxInimigoAtual + 2 <= MAX_INIMIGOS_JANELA){
         maxInimigoAtual = maxInimigoAtual + 2;
@@ -349,14 +354,20 @@ void VencerNivel() {
     default: break;
     }
 
-    InicializarNivel(); // Prepara e inicia o próximo nível (que é o mesmo, mas com pontuação maior).
+    if((tempoMaximoAtual - 1) >= TEMPO_MINIMO){
+        tempoMaximoAtual--;
+    }
+
+    InicializarNivel();
 }
 
-void EsconderCursorConsole(){
-    CONSOLE_CURSOR_INFO info;
-    info.dwSize = 100; // Set the cursor size (1-100), 100 makes it a full block
-    info.bVisible = FALSE; // Set to FALSE to hide the cursor
-    SetConsoleCursorInfo(console, &info);
+void EsconderCursorConsole() {
+    HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_CURSOR_INFO cursorInfo;
+
+    GetConsoleCursorInfo(console, &cursorInfo);
+    cursorInfo.bVisible = FALSE; // Define a visibilidade do cursor como falso
+    SetConsoleCursorInfo(console, &cursorInfo);
 }
 
 bool mostrarMenu = true;
@@ -453,7 +464,7 @@ void MenuInicial(){
 void DesenharPredio(){
     for(int i = scrollCamera; i < ALTURA_JOGO_PRINCIPAL + scrollCamera; i++){
         for(int j = 0; j < LARGURA_PREDIO; j++){
-            int indice = (i - scrollCamera + ALTURA_UI_SUPERIOR) * LARGURA_TELA + (((LARGURA_TELA - LARGURA_PREDIO) / 2) + j);
+            int indice = (i - scrollCamera + ALTURA_HUD_SINGULAR) * LARGURA_TELA + (((LARGURA_TELA - LARGURA_PREDIO) / 2) + j);
             if (i >= 0 && i < ALTURA_PREDIO) {
                 bufferConsole[indice].Char.UnicodeChar = PREDIO[i][j];
                 if(PREDIO[i][j] == '#'){
@@ -480,7 +491,7 @@ void DesenharMiranha(){
         for(int i = 0; i < ALTURA_MIRANHA; ++i){
             for(int j = 0; j < LARGURA_MIRANHA; ++j){
                 if (CORPO_MIRANHA[i][j] != ' ' || (i == 0 && j == 2) || (i == 1 && j == 1)) {
-                    int indice = (miranha.y + i + ALTURA_UI_SUPERIOR) * LARGURA_TELA + (miranha.x + j);
+                    int indice = (miranha.y + i + ALTURA_HUD_SINGULAR) * LARGURA_TELA + (miranha.x + j);
                     if ( (miranha.y + i) < ALTURA_JOGO_PRINCIPAL) {
                         bufferConsole[indice].Char.UnicodeChar = CORPO_MIRANHA[i][j];
 
@@ -497,7 +508,7 @@ void DesenharMiranha(){
     }
     else{ // Se o Homem-Aranha está caindo...
         for(int i = 0; i < LARGURA_MIRANHA; i++){
-            int indice = (miranha.y + ALTURA_UI_SUPERIOR) * LARGURA_TELA + miranha.x;
+            int indice = (miranha.y + ALTURA_HUD_SINGULAR) * LARGURA_TELA + miranha.x;
              if (miranha.y < ALTURA_JOGO_PRINCIPAL) {
                 bufferConsole[indice + i].Char.UnicodeChar = MIRANHA_CAINDO[i];
                 
@@ -516,7 +527,7 @@ void DesenharDoente(){
     for(int i = 0 + scrollDoente; i < ALTURA_DOENTE; ++i){
         for(int j = 0; j < LARGURA_DOENTE; ++j){
             if (DOENTE_VERDE[i][j] != ' ' || (i == 1 && j == 3) || (i == 0 && j == 2)) {
-                int indice = (doente.y + (i - scrollDoente) + ALTURA_UI_SUPERIOR) * LARGURA_TELA + (doente.x + j);
+                int indice = (doente.y + (i - scrollDoente) + ALTURA_HUD_SINGULAR) * LARGURA_TELA + (doente.x + j);
                 if ( (doente.y + (i- scrollDoente)) < ALTURA_JOGO_PRINCIPAL){
                     bufferConsole[indice].Char.UnicodeChar = DOENTE_VERDE[i][j];
 
@@ -545,9 +556,9 @@ void DesenharInimigos() {
             for (int linha = 0; linha < ALTURA_INIMIGO_JANELA; linha++) {
                 for (int coluna = 0; coluna < LARGURA_INIMIGO_JANELA; coluna++) {
                     if (INIMIGO_JANELA_SPRITE[linha][coluna] != ' ') {
-                        int finalY = inimigoTelaY + linha + ALTURA_UI_SUPERIOR;
+                        int finalY = inimigoTelaY + linha + ALTURA_HUD_SINGULAR;
                         int finalX = inimigoTelaX + coluna;
-                        if (finalY >= ALTURA_UI_SUPERIOR && finalY < ALTURA_JOGO_PRINCIPAL + ALTURA_UI_SUPERIOR && finalX >= 0 && finalX < LARGURA_TELA) {
+                        if (finalY >= ALTURA_HUD_SINGULAR && finalY < ALTURA_JOGO_PRINCIPAL + ALTURA_HUD_SINGULAR && finalX >= 0 && finalX < LARGURA_TELA) {
                             int indice = finalY * LARGURA_TELA + finalX;
                             bufferConsole[indice].Char.UnicodeChar = INIMIGO_JANELA_SPRITE[linha][coluna];
 
@@ -568,9 +579,9 @@ void DesenharInimigos() {
 void DesenharBombas() {
     for (int i = 0; i < maxBombaAtual; i++) {
         if (bombas[i].ativo) {
-            int bombaTelaY = bombas[i].y - scrollCamera + ALTURA_UI_SUPERIOR;
+            int bombaTelaY = bombas[i].y - scrollCamera + ALTURA_HUD_SINGULAR;
             int bombaTelaX = bombas[i].x + ((LARGURA_TELA - LARGURA_PREDIO) / 2);
-            if (bombaTelaY >= ALTURA_UI_SUPERIOR && bombaTelaY < ALTURA_JOGO_PRINCIPAL + ALTURA_UI_SUPERIOR && bombaTelaX >= 0 && bombaTelaX < LARGURA_TELA) {
+            if (bombaTelaY >= ALTURA_HUD_SINGULAR && bombaTelaY < ALTURA_JOGO_PRINCIPAL + ALTURA_HUD_SINGULAR && bombaTelaX >= 0 && bombaTelaX < LARGURA_TELA) {
                 int indice = bombaTelaY * LARGURA_TELA + bombaTelaX;
                 bufferConsole[indice].Char.UnicodeChar = '@';
                 bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_INTENSITY;
@@ -585,7 +596,7 @@ void DesenharTeia() {
             case CIMA:
                 for (int i = 1; i <= tamanhoTeiaDisparando; i++){
                     if (miranha.y - i >= 0){
-                        int indice = (miranha.y - i + ALTURA_UI_SUPERIOR) * LARGURA_TELA + (miranha.x + INICIO_TEIA_X);
+                        int indice = (miranha.y - i + ALTURA_HUD_SINGULAR) * LARGURA_TELA + (miranha.x + INICIO_TEIA_X);
                         bufferConsole[indice].Char.UnicodeChar = '0';
                         bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_INTENSITY;
                     }
@@ -594,7 +605,7 @@ void DesenharTeia() {
             case DIAGONAL_ESQUERDA:
                 for (int i = 1; i <= tamanhoTeiaDisparando; i++){
                     if (miranha.y - i >= 0 && miranha.x + 1 - i >= 0){
-                        int indice = (miranha.y - i + ALTURA_UI_SUPERIOR) * LARGURA_TELA + (miranha.x + 1 - i);
+                        int indice = (miranha.y - i + ALTURA_HUD_SINGULAR) * LARGURA_TELA + (miranha.x + 1 - i);
                         bufferConsole[indice].Char.UnicodeChar = '0';
                         bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_INTENSITY;
                     }
@@ -603,7 +614,7 @@ void DesenharTeia() {
             case DIAGONAL_DIREITA:
                 for (int i = 1; i <= tamanhoTeiaDisparando; i++){
                     if (miranha.y - i >= 0 && miranha.x + INICIO_TEIA_X + i < LARGURA_TELA){
-                        int indice = (miranha.y - i + ALTURA_UI_SUPERIOR) * LARGURA_TELA + (miranha.x + INICIO_TEIA_X + i);
+                        int indice = (miranha.y - i + ALTURA_HUD_SINGULAR) * LARGURA_TELA + (miranha.x + INICIO_TEIA_X + i);
                         bufferConsole[indice].Char.UnicodeChar = '0';
                         bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_INTENSITY;
                     }
@@ -627,7 +638,7 @@ void DesenharTeia() {
 
         while (true) {
             if (y0 >= 0 && y0 < ALTURA_JOGO_PRINCIPAL && x0 >= 0 && x0 < LARGURA_TELA) {
-                int indice = (y0 + ALTURA_UI_SUPERIOR) * LARGURA_TELA + x0;
+                int indice = (y0 + ALTURA_HUD_SINGULAR) * LARGURA_TELA + x0;
                 bufferConsole[indice].Char.UnicodeChar = '.';
                 bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_INTENSITY;
             }
@@ -649,36 +660,43 @@ void DesenharTeia() {
     }
 }
 
-void DesenharUI() {
+void DesenharHUD() {
     char textoPontos[30]; // Cria uma string para formatar o texto.
     sprintf(textoPontos, "PONTOS: %d", pontuacao); // Formata a string com a pontuação atual.
     int indiceTextoPontos = (LARGURA_TELA - strlen(textoPontos)) / 2; // Calcula a posição inicial para centralizar o texto.
-    // Loop para escrever o texto no buffer, na linha superior.
+
     for (int i = 0; i < strlen(textoPontos); i++) {
         bufferConsole[i + indiceTextoPontos].Char.UnicodeChar = textoPontos[i];
     }
 
-    int linhaInferiorY = ALTURA_JOGO_PRINCIPAL + ALTURA_UI_SUPERIOR; // Define a linha Y para a UI inferior.
+    int linhaInferiorY = ALTURA_JOGO_PRINCIPAL + ALTURA_HUD_SINGULAR; // Define a linha Y para a UI inferior.
 
-    char textoVidas[15];
+    char textoVidas[9];
     sprintf(textoVidas, "VIDAS: %d", vidas); // Formata a string de vidas.
     for (int i = 0; i < strlen(textoVidas); i++) {
-        int indice = linhaInferiorY * LARGURA_TELA + i;
-        bufferConsole[indice].Char.UnicodeChar = textoVidas[i];
+        int indiceTextoVidas = linhaInferiorY * LARGURA_TELA + i;
+        bufferConsole[indiceTextoVidas].Char.UnicodeChar = textoVidas[i];
+        if(vidas == 1 && i == strlen(textoVidas) - 1){
+            bufferConsole[indiceTextoVidas].Attributes = FOREGROUND_RED | FOREGROUND_INTENSITY;
+        }
     }
 
     for (int i = 0; i < tempoRestante; i++) {
         int x = LARGURA_TELA - TEMPO_MAXIMO - 1 + i; // Calcula a posição X no canto inferior direito.
-        int indiceTextoVidas = linhaInferiorY * LARGURA_TELA + x;
-        bufferConsole[indiceTextoVidas].Char.UnicodeChar = '#'; // Caractere da barra de tempo.
-        bufferConsole[indiceTextoVidas].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY; // Cor da barra.
+        int indiceTempoRestante = linhaInferiorY * LARGURA_TELA + x;
+        bufferConsole[indiceTempoRestante].Char.UnicodeChar = '#'; // Caractere da barra de tempo.
+        if(tempoRestante > 4){
+            bufferConsole[indiceTempoRestante].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY;
+        } else{
+            bufferConsole[indiceTempoRestante].Attributes = FOREGROUND_RED | FOREGROUND_INTENSITY;
+        }
     }
 }
 
 void DesenharTela(){
     LimparBuffer();
     
-    DesenharUI();       // UI fica no fundo para não sobrepor o jogo.
+    DesenharHUD();       // UI fica no fundo para não sobrepor o jogo.
     DesenharPredio();   // O prédio é o fundo principal.
     DesenharBombas();   // Bombas sobre o prédio.
     DesenharInimigos(); // Inimigos sobre o prédio.
@@ -1158,6 +1176,9 @@ void VerificarColisoes() {
                 pontuacao += 30; // Ganha pontos.
                 som_colidir_inimigo = true;
                 inimigos[i].ativo = false;
+                if(tempoRestante < TEMPO_MAXIMO){
+                    tempoRestante++;
+                }
                 return; // Inimigo derrotado.
             }
         }
@@ -1171,6 +1192,9 @@ void VerificarColisoes() {
                 pontuacao += 80; // Ganha pontos.
                 som_colidir_bomba = true;
                 bombas[i].ativo = false;
+                if(tempoRestante < TEMPO_MAXIMO){
+                    tempoRestante++;
+                }
                 return; // Bomba desarmada.
             }
         }
