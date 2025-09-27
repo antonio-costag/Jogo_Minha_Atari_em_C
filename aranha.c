@@ -127,6 +127,8 @@ int contadorTempo;            // Acumula o tempo dos tiques do jogo para decreme
 int pontuacao;                  // Pontuação atual do jogador. 
 int vidas;                      // Vidas restantes do jogador.
 
+int predioCor = 1;
+
 int maxInimigoAtual = 4;
 int maxBombaAtual = 4;
 int probabilidadeInimigo = 5;
@@ -336,7 +338,25 @@ void VencerNivel() {
         probabilidadeBomba = probabilidadeBomba + 2;
     }
 
+    switch (predioCor)
+    {
+    case 1:
+        predioCor = 2; break;
+    case 2:
+        predioCor = 3; break;
+    case 3:
+        predioCor = 1; break;
+    default: break;
+    }
+
     InicializarNivel(); // Prepara e inicia o próximo nível (que é o mesmo, mas com pontuação maior).
+}
+
+void EsconderCursorConsole(){
+    CONSOLE_CURSOR_INFO info;
+    info.dwSize = 100; // Set the cursor size (1-100), 100 makes it a full block
+    info.bVisible = FALSE; // Set to FALSE to hide the cursor
+    SetConsoleCursorInfo(console, &info);
 }
 
 bool mostrarMenu = true;
@@ -440,7 +460,15 @@ void DesenharPredio(){
                     bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_INTENSITY;
                 }
                 else{
-                    bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_RED | FOREGROUND_INTENSITY;
+                    switch (predioCor) {
+                        case 1:
+                            bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY; break;
+                        case 2:
+                            bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_INTENSITY; break;
+                        case 3:
+                            bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE; break;
+                        default: break;
+                    }
                 }
             }
         }
@@ -1260,6 +1288,8 @@ DWORD WINAPI Jogo(LPVOID lpParam){ // Precisa desse LPVOID lpParam pra compilar 
     SetConsoleOutputCP(CP_UTF8);
 
     console = GetStdHandle(STD_OUTPUT_HANDLE);
+
+    EsconderCursorConsole();
 
     while(mostrarMenu){
         MenuInicial();
