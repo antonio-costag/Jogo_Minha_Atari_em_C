@@ -137,6 +137,7 @@ bool som_colidir_inimigo = false;
 bool som_colidir_bomba = false;
 bool som_colidir_doente = false;
 bool musica = false;
+bool game_over_musica = false;
 
 const wchar_t *CORPO_MIRANHA[ALTURA_MIRANHA] = {
     L"|o /",
@@ -273,6 +274,11 @@ void DesenharBuffer(){
 }
 
 void GameOver(){
+    game_over_musica = true;
+    quedaComum = false;
+    quedaFatal = false;
+    
+    
     char gameOver[10];
     char pontosTotais[50];
     sprintf(gameOver, "GAME OVER");
@@ -383,8 +389,6 @@ void SelecionarMenu(){
 }
 
 void MenuInicial(){
-
-    
     char jogar[6];
     sprintf(jogar, "JOGAR");
 
@@ -811,7 +815,7 @@ void EscolherControleTeia() {
     }
 }
 
-void MovimentarMiranha() {
+void MovimentarMiranha() {  
     if (teiaAncorada) {
         int ancoraTelaY = teiaAncoradaNoPredioY - scrollCamera;
         int ancoraTelaX = teiaAncoradaNoPredioX + ((LARGURA_TELA - LARGURA_PREDIO) / 2);
@@ -826,6 +830,7 @@ void MovimentarMiranha() {
             else {
                 miranha.y--;
             }
+
 
             if (miranha.x + INICIO_TEIA_X < ancoraTelaX) {
                 miranha.x++;
@@ -1227,6 +1232,29 @@ void AtualizarTempo() {
     }
 }
 
+void Carregando(){
+    char textoCarregando[15];
+    sprintf(textoCarregando, "Carregando...");
+
+    int indiceCarregando = ALTURA_TELA/2 * LARGURA_TELA + (LARGURA_TELA - strlen(textoCarregando))/2;
+
+    
+    while (musica)
+    {
+        LimparBuffer();
+
+        for(int i = 0; i < strlen(textoCarregando); i++){
+            bufferConsole[indiceCarregando + i].Char.UnicodeChar = textoCarregando[i];
+            bufferConsole[indiceCarregando + i].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY;
+        }
+        
+        DesenharBuffer(); 
+    }
+
+    Sleep(1000);
+    musica = true;
+}
+
 DWORD WINAPI Jogo(LPVOID lpParam){ // Precisa desse LPVOID lpParam pra compilar pra mim
     srand(time(NULL));
     SetConsoleOutputCP(CP_UTF8);
@@ -1238,6 +1266,7 @@ DWORD WINAPI Jogo(LPVOID lpParam){ // Precisa desse LPVOID lpParam pra compilar 
         Sleep(ATRASO_TIQUE + 25);
     }
 
+    Carregando();
     InicializarJogo();
 
     while (true)
@@ -1301,7 +1330,7 @@ void SomTeiaAncorada(){
 }
 
 void SomQuedaMiranha(){
-    if(quedaComum || quedaFatal){ 
+    if(quedaComum || quedaFatal){
         Beep(392, 150); // Sol (G4)
         Sleep(50);
         Beep(261, 150); // Dó (C4)
@@ -1320,8 +1349,11 @@ void SomColodirElementos(bool colisao, int frequncia){
         som_colidir_bomba = false;
         som_colidir_doente = false;
     }
-}      
+}  
+
 void Musica(){
+    musica = true;
+
     Beep(294, 225); // Nota D4
     Beep(294, 75);  // Nota D4
     Beep(440, 300); // Nota A4
@@ -1340,16 +1372,41 @@ void Musica(){
     Beep(330, 150); // Nota E4
     Beep(349, 150); // Nota F4
     Beep(294, 300); // Nota D4
-    Sleep(150);
+    Sleep(1000);
 
     musica = false;
+}
+
+void GameOverMusica(){
+    Sleep(500);
+    Beep(440, 150); // Nota A4
+    Sleep(50);      // Pequena pausa
+
+    Beep(392, 200); // Nota G4
+    Beep(349, 200); // Nota F4
+    Beep(330, 200); // Nota E4
+    Beep(294, 400); // Nota D4 (um pouco mais longa)
+
+    Sleep(300);
+
+    Beep(261, 500); // Nota C4 (grave)
+    Sleep(150);     // Pausa curta antes do fim
+    Beep(196, 1000); // Nota G3 (muito grave)
+
+    game_over_musica = false;
 }                                        
                                  
 DWORD WINAPI EfeitosSonoros(LPVOID lpParam){ // Precisa desse LPVOID lpParam pra compilar pra mim
-    musica = true;
+    while (mostrarMenu){
+        Musica();
+    }
 
     while(true){
-        if(musica){
+        if(game_over_musica){
+            musica = false;
+            GameOverMusica();
+        }
+        else if(musica){
             Musica();
         }
         else{
@@ -1361,11 +1418,11 @@ DWORD WINAPI EfeitosSonoros(LPVOID lpParam){ // Precisa desse LPVOID lpParam pra
             SomColodirElementos(som_colidir_doente, 493);
         }
     }
+
     return 0;
 }
 
 int main(){
-
     HANDLE thread1;
     HANDLE thread2;
 
