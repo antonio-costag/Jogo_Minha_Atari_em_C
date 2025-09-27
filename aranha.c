@@ -555,19 +555,17 @@ void DesenharInimigos() {
 
             for (int linha = 0; linha < ALTURA_INIMIGO_JANELA; linha++) {
                 for (int coluna = 0; coluna < LARGURA_INIMIGO_JANELA; coluna++) {
-                    if (INIMIGO_JANELA_SPRITE[linha][coluna] != ' ') {
-                        int finalY = inimigoTelaY + linha + ALTURA_HUD_SINGULAR;
-                        int finalX = inimigoTelaX + coluna;
-                        if (finalY >= ALTURA_HUD_SINGULAR && finalY < ALTURA_JOGO_PRINCIPAL + ALTURA_HUD_SINGULAR && finalX >= 0 && finalX < LARGURA_TELA) {
-                            int indice = finalY * LARGURA_TELA + finalX;
-                            bufferConsole[indice].Char.UnicodeChar = INIMIGO_JANELA_SPRITE[linha][coluna];
+                    int finalY = inimigoTelaY + linha + ALTURA_HUD_SINGULAR;
+                    int finalX = inimigoTelaX + coluna;
+                    if (finalY >= ALTURA_HUD_SINGULAR && finalY < ALTURA_JOGO_PRINCIPAL + ALTURA_HUD_SINGULAR && finalX >= 0 && finalX < LARGURA_TELA) {
+                        int indice = finalY * LARGURA_TELA + finalX;
+                        bufferConsole[indice].Char.UnicodeChar = INIMIGO_JANELA_SPRITE[linha][coluna];
 
-                            if(INIMIGO_JANELA_SPRITE[linha][coluna] == 'o'){
-                                bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_BLUE;
-                            }
-                            else{
-                                bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_INTENSITY;
-                            }
+                        if(INIMIGO_JANELA_SPRITE[linha][coluna] == 'o'){
+                            bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_BLUE;
+                        }
+                        else{
+                            bufferConsole[indice].Attributes = FOREGROUND_RED | FOREGROUND_INTENSITY;
                         }
                     }
                 }
@@ -963,6 +961,8 @@ void SpawnInimigos() {
             }
         }
 
+    int miranha_x1 = miranha.x, miranha_y1 = miranha.y, miranha_x2 = miranha.x + LARGURA_MIRANHA, miranha_y2 = miranha.y + ALTURA_MIRANHA;
+    
         if (slotVazio != -1) {
             COORD janelasDisponiveis[NUM_POSICOES_JANELAS];
             int countDisponiveis = 0;
@@ -971,13 +971,22 @@ void SpawnInimigos() {
                 bool naTela = posicoesJanelas[i].Y >= scrollCamera && posicoesJanelas[i].Y < scrollCamera + ALTURA_JOGO_PRINCIPAL;
                 if (naTela) {
                     bool posicaoOcupada = false;
+                    bool aranhaOcupa = false;
                     for (int j = 0; j < maxInimigoAtual; j++) {
+                        int inimigoTelaY = inimigos[j].y - scrollCamera, inimigoTelaX = inimigos[j].x + ((LARGURA_TELA - LARGURA_PREDIO) / 2);
+                        int inimigo_x1 = inimigoTelaX, inimigo_y1 = inimigoTelaY, inimigo_x2 = inimigoTelaX + LARGURA_INIMIGO_JANELA, inimigo_y2 = inimigoTelaY + ALTURA_INIMIGO_JANELA;
                         if (inimigos[j].ativo && inimigos[j].x == posicoesJanelas[i].X + 1 && inimigos[j].y == posicoesJanelas[i].Y + 2) {
                             posicaoOcupada = true;
                             break;
                         }
-                    }
-                    if (!posicaoOcupada) {
+
+                        if (miranha_x1 < inimigo_x2 && miranha_x2 > inimigo_x1 && miranha_y1 < inimigo_y2 && miranha_y2 > inimigo_y1) {
+                            aranhaOcupa = true;
+                            break;     
+                        }
+                    }                       
+            
+                    if (!posicaoOcupada && !aranhaOcupa) {
                         janelasDisponiveis[countDisponiveis] = posicoesJanelas[i];
                         countDisponiveis++;
                     }
@@ -1062,7 +1071,9 @@ void SpawnBombas() {
 }
 
 void AtualizarInimigos() {
+    int miranha_x1 = miranha.x, miranha_y1 = miranha.y, miranha_x2 = miranha.x + LARGURA_MIRANHA, miranha_y2 = miranha.y + ALTURA_MIRANHA;
     for (int i = 0; i < maxInimigoAtual; i++) {
+        
         if (inimigos[i].ativo) {
             inimigos[i].tempoNoLugar += ATRASO_TIQUE; // Incrementa o temporizador.
             if (inimigos[i].tempoNoLugar >= 4000) {
@@ -1070,13 +1081,20 @@ void AtualizarInimigos() {
                 while (tentativas < NUM_POSICOES_JANELAS) {
                     int posIndex = rand() % NUM_POSICOES_JANELAS;
                     bool posicaoOcupada = false;
+                    bool aranhaOcupa = false;
                     for (int j = 0; j < maxInimigoAtual; j++) {
+                        int inimigoTelaY = inimigos[j].y - scrollCamera, inimigoTelaX = inimigos[j].x + ((LARGURA_TELA - LARGURA_PREDIO) / 2);
+                        int inimigo_x1 = inimigoTelaX, inimigo_y1 = inimigoTelaY, inimigo_x2 = inimigoTelaX + LARGURA_INIMIGO_JANELA, inimigo_y2 = inimigoTelaY + ALTURA_INIMIGO_JANELA;
                         if (i != j && inimigos[j].ativo && inimigos[j].x == posicoesJanelas[posIndex].X + 1 && inimigos[j].y == posicoesJanelas[posIndex].Y + 2) {
                             posicaoOcupada = true;
                             break;
                         }
+                        if (miranha_x1 < inimigo_x2 && miranha_x2 > inimigo_x1 && miranha_y1 < inimigo_y2 && miranha_y2 > inimigo_y1) {
+                            aranhaOcupa = true;
+                            break;     
+                        }
                     }
-                    if (!posicaoOcupada) { // Se encontrou uma vazia...
+                    if (!posicaoOcupada && !aranhaOcupa) { // Se encontrou uma vazia...
                         inimigos[i].x = posicoesJanelas[posIndex].X + 1;
                         inimigos[i].y = posicoesJanelas[posIndex].Y + 2;
                         inimigos[i].tempoNoLugar = 0; // Reseta o temporizador.
